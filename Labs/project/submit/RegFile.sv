@@ -15,6 +15,19 @@ module RegFile (
   integer i;
   data_t register [1:31]; // x1 - x31, x0 keeps zero
 
-  // fill your code
+  always @(posedge clk or posedge rst) begin
+    if(rst) begin
+      for(i = 1; i < 32; i++) begin
+        register[i] <= 0;
+      end
+    end else begin
+      if(we & write_addr != 0) begin
+        register[write_addr] <= write_data; 
+      end
+    end
+  end
+
+  assign read_data_1 = (read_addr_1 == 0) ? 0 : register[read_addr_1];
+  assign read_data_2 = (read_addr_2 == 0) ? 0 : register[read_addr_2];
 
 endmodule
