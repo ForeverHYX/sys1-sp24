@@ -3,6 +3,7 @@
 
 - Report：实验报告
 - Labs：实验代码，按Lab序号排列
+- CheatPaper: 本课程期末考允许携带一张 A4 小抄，这里是我根据复习 PPT 做的小抄，可以参考一下
 
 代码仅包含必要文件，对于给出的文件以及 Makefile 请查阅 [实验文档](https://zju-sys.pages.zjusct.io/sys1/sys1-sp24/) 按要求拉取。
 
