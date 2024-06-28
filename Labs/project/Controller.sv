@@ -16,38 +16,38 @@ module controller (
 );
 
     import CorePack::*;
+    funct3_t func3=inst[14:12];
+    funct7_t func7=inst[31:25];
+    opcode_t opcode=inst[6:0];
     logic ins_load,ins_imm,ins_auipc,ins_immw,ins_store,ins_reg,ins_lui,ins_regw,ins_branch,ins_jalr,ins_jal;
-    assign ins_load = (inst[6:0]==7'b0000011);
-    assign ins_imm = (inst[6:0]==7'b0010011);
-    assign ins_auipc = (inst[6:0]==7'b0010111);
-    assign ins_immw = (inst[6:0]==7'b0011011);
-    assign ins_store = (inst[6:0]==7'b0100011);
-    assign ins_reg = (inst[6:0]=== 7'b0110011);
-    assign ins_lui = (inst[6:0]=== 7'b0110111);
-    assign ins_regw = (inst[6:0]=== 7'b0111011);
-    assign ins_branch = (inst[6:0]=== 7'b1100011);
-    assign ins_jalr = (inst[6:0]=== 7'b1100111);
-    assign ins_jal = (inst[6:0]=== 7'b1101111);
+
+    assign ins_load = (inst[6:0]==LOAD_OPCODE);
+    assign ins_imm = (inst[6:0]==IMM_OPCODE);
+    assign ins_auipc = (inst[6:0]==AUIPC_OPCODE);
+    assign ins_immw = (inst[6:0]==IMMW_OPCODE);
+    assign ins_store = (inst[6:0]==STORE_OPCODE);
+    assign ins_reg = (inst[6:0]=== REG_OPCODE);
+    assign ins_lui = (inst[6:0]=== LUI_OPCODE);
+    assign ins_regw = (inst[6:0]=== REGW_OPCODE);
+    assign ins_branch = (inst[6:0]=== BRANCH_OPCODE);
+    assign ins_jalr = (inst[6:0]=== JALR_OPCODE);
+    assign ins_jal = (inst[6:0]=== JAL_OPCODE);
 
     assign we_reg = ins_reg | ins_imm | ins_load | ins_auipc | ins_lui | ins_regw | ins_immw | ins_jalr | ins_jal;
     assign we_mem = ins_store;
     assign re_mem = ins_load;
     assign is_b = ins_branch;
     assign is_j = ins_jalr | ins_jal;
-
-    funct3_t func3=inst[14:12];
-    funct7_t func7=inst[31:25];
-    opcode_t opcode=inst[6:0];
+    assign immgen_op = (ins_load | ins_imm | ins_immw | ins_jalr) ? I_IMM : ((ins_auipc | ins_lui) ? U_IMM : ((ins_reg | ins_regw) ? IMM0 : (ins_store ? S_IMM : (ins_branch ? B_IMM : UJ_IMM))));
+    assign alu_asel = (ins_reg | ins_imm | ins_immw | ins_store | ins_load | ins_regw | ins_jalr) ? ASEL_REG : ((ins_auipc | ins_jal | ins_branch) ? ASEL_PC : ASEL0);
+    assign alu_bsel = (ins_load | ins_imm | ins_auipc | ins_immw | ins_lui | ins_store | ins_branch | ins_jal) ? BSEL_IMM : ((ins_reg | ins_regw) ? BSEL_REG : BSEL0);
+    assign wb_sel = ins_load ? WB_SEL_MEM : ((ins_jal | ins_jalr | ins_branch) ? WB_SEL_PC : (ins_load | ins_imm | ins_immw | ins_auipc | ins_reg |ins_regw | ins_lui) ? WB_SEL_ALU : WB_SEL0);
 
     always_comb begin
         case(opcode)
             LOAD_OPCODE:begin
-                immgen_op=I_IMM;
                 alu_op=ALU_ADD;
                 cmp_op=CMP_NO;
-                alu_asel=ASEL_REG;
-                alu_bsel=BSEL_IMM;
-                wb_sel=WB_SEL_MEM;
                 case(func3)
                     LB_FUNCT3:mem_op=MEM_B;
                     LH_FUNCT3:mem_op=MEM_H;
@@ -60,7 +60,6 @@ module controller (
                 endcase
             end
             IMM_OPCODE:begin
-                immgen_op=I_IMM;
                 case(func3)
                     ADD_FUNCT3:alu_op=ALU_ADD;
                     SLL_FUNCT3:alu_op=ALU_SLL;
@@ -73,23 +72,15 @@ module controller (
                     default:alu_op=ALU_DEFAULT;
                 endcase
                 cmp_op=CMP_NO;
-                alu_asel=ASEL_REG;
-                alu_bsel=BSEL_IMM;
-                wb_sel=WB_SEL_ALU;
                 mem_op=MEM_NO;
             end
 
             AUIPC_OPCODE:begin
-                immgen_op=U_IMM;
                 alu_op=ALU_ADD;
                 cmp_op=CMP_NO;
-                alu_asel=ASEL_PC;
-                alu_bsel=BSEL_IMM;
-                wb_sel=WB_SEL_ALU;
                 mem_op=MEM_NO;
             end
             IMMW_OPCODE:begin
-                immgen_op = I_IMM;
                 case (func3)
                     ADDW_FUNCT3: alu_op = (func7 == 7'b0100000) ? ALU_SUBW : ALU_ADDW;
                     SLLW_FUNCT3: alu_op = ALU_SLLW;
@@ -97,18 +88,11 @@ module controller (
                     default: alu_op = ALU_DEFAULT;
                 endcase
                 cmp_op = CMP_NO;
-                alu_asel = ASEL_REG;
-                alu_bsel = BSEL_IMM;
-                wb_sel = WB_SEL_ALU;
                 mem_op = MEM_NO;
             end
             STORE_OPCODE:begin
-                immgen_op = S_IMM;
                 alu_op = ALU_ADD;
                 cmp_op = CMP_NO;
-                alu_asel = ASEL_REG;
-                alu_bsel = BSEL_IMM;
-                wb_sel = WB_SEL0;
                 case (func3)
                     SB_FUNCT3: mem_op = MEM_B;
                     SH_FUNCT3: mem_op = MEM_H;
@@ -118,7 +102,6 @@ module controller (
                 endcase
             end
             REG_OPCODE:begin
-                immgen_op = IMM0;
                 case(func3)
                     ADD_FUNCT3:alu_op=(func7==7'b0000000)?ALU_ADD:ALU_SUB;
                     SLL_FUNCT3:alu_op=ALU_SLL;
@@ -131,22 +114,14 @@ module controller (
                     default:alu_op=ALU_DEFAULT;
                 endcase
                 cmp_op = CMP_NO;
-                alu_asel = ASEL_REG;
-                alu_bsel = BSEL_REG;
-                wb_sel = WB_SEL_ALU;
                 mem_op = MEM_NO;
             end
             LUI_OPCODE:begin
-                immgen_op = U_IMM;
                 alu_op = ALU_ADD;
                 cmp_op = CMP_NO;
-                alu_asel = ASEL0;
-                alu_bsel = BSEL_IMM;
-                wb_sel = WB_SEL_ALU;
                 mem_op = MEM_NO;
             end
             REGW_OPCODE:begin
-                immgen_op = IMM0;
                 case (func3)
                     ADDW_FUNCT3: alu_op = (func7 == 7'b0000000) ? ALU_ADDW : ALU_SUBW;
                     SLLW_FUNCT3: alu_op = ALU_SLLW;
@@ -154,13 +129,9 @@ module controller (
                     default: alu_op = ALU_DEFAULT;
                 endcase
                 cmp_op = CMP_NO;
-                alu_asel = ASEL_REG;
-                alu_bsel = BSEL_REG;
-                wb_sel = WB_SEL_ALU;
                 mem_op = MEM_NO;
             end
             BRANCH_OPCODE:begin
-                immgen_op = B_IMM;
                 alu_op = ALU_ADD;
                 case (func3)
                     BEQ_FUNCT3: cmp_op = CMP_EQ;
@@ -171,34 +142,20 @@ module controller (
                     BGEU_FUNCT3: cmp_op = CMP_GEU; 
                     default: cmp_op = CMP_NO;
                 endcase
-                alu_asel = ASEL_PC;
-                alu_bsel = BSEL_IMM;
             end
             JALR_OPCODE:begin
-                immgen_op = I_IMM;
                 alu_op = ALU_ADD;
                 cmp_op = CMP_NO;
-                alu_asel = ASEL_REG;
-                alu_bsel = BSEL_IMM;
-                wb_sel = WB_SEL_PC;
                 mem_op = MEM_NO;
             end
             JAL_OPCODE:begin
-                immgen_op = UJ_IMM;
                 alu_op = ALU_ADD;
                 cmp_op = CMP_NO;
-                alu_asel = ASEL_PC;
-                alu_bsel = BSEL_IMM;
-                wb_sel = WB_SEL_PC;
                 mem_op = MEM_NO;
             end
             default:begin
-                immgen_op = IMM0;
                 alu_op = ALU_DEFAULT;
                 cmp_op = CMP_NO;
-                alu_asel = ASEL0;
-                alu_bsel = BSEL0;
-                wb_sel = WB_SEL0;
                 mem_op = MEM_NO;
             end
         endcase

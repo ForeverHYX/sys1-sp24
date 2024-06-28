@@ -113,92 +113,45 @@ module Core (
     always_comb begin
         case(mem_op)
             MEM_B: begin
-                case (alu_res[2:0])
-                    3'b000: dmem_ift.w_request_bits.wdata = {56'b0, read_data_2[7:0]};
-                    3'b001: dmem_ift.w_request_bits.wdata = {48'b0, read_data_2[7:0], 8'b0};
-                    3'b010: dmem_ift.w_request_bits.wdata = {40'b0, read_data_2[7:0], 16'b0};
-                    3'b011: dmem_ift.w_request_bits.wdata = {32'b0, read_data_2[7:0], 24'b0};
-                    3'b100: dmem_ift.w_request_bits.wdata = {24'b0, read_data_2[7:0], 32'b0};
-                    3'b101: dmem_ift.w_request_bits.wdata = {16'b0, read_data_2[7:0], 40'b0};
-                    3'b110: dmem_ift.w_request_bits.wdata = {8'b0, read_data_2[7:0], 48'b0};
-                    3'b111: dmem_ift.w_request_bits.wdata = {read_data_2[7:0], 56'b0};
-                    default: dmem_ift.w_request_bits.wdata = 64'b0;
-                endcase
+                dmem_ift.w_request_bits.wdata[7:0] = read_data_2[7:0];
+                dmem_ift.w_request_bits.wdata = dmem_ift.w_request_bits.wdata << {alu_res[2:0], 3'b0};
             end
             MEM_H: begin
-                case (alu_res[2:1])
-                    2'b00: dmem_ift.w_request_bits.wdata = {48'b0, read_data_2[15:0]};
-                    2'b01: dmem_ift.w_request_bits.wdata = {32'b0, read_data_2[15:0], 16'b0};
-                    2'b10: dmem_ift.w_request_bits.wdata = {16'b0, read_data_2[15:0], 32'b0};
-                    2'b11: dmem_ift.w_request_bits.wdata = {read_data_2[15:0], 48'b0};
-                    default: dmem_ift.w_request_bits.wdata = 64'b0;
-                endcase
+                dmem_ift.w_request_bits.wdata[15:0] = read_data_2[15:0];
+                dmem_ift.w_request_bits.wdata = dmem_ift.w_request_bits.wdata << {alu_res[2:1], 4'b0};
             end
             MEM_W: begin
-                case (alu_res[2])
-                    1'b0: dmem_ift.w_request_bits.wdata = {32'b0, read_data_2[31:0]};
-                    1'b1: dmem_ift.w_request_bits.wdata = {read_data_2[31:0], 32'b0};
-                    default: dmem_ift.w_request_bits.wdata = 64'b0;
-                endcase
+                dmem_ift.w_request_bits.wdata[31:0] = read_data_2[31:0];
+                dmem_ift.w_request_bits.wdata = dmem_ift.w_request_bits.wdata << {alu_res[2], 5'b0};
             end
             MEM_D: dmem_ift.w_request_bits.wdata = read_data_2;
-            default: dmem_ift.w_request_bits.wdata = read_data_2;
+            default: dmem_ift.w_request_bits.wdata = 64'b0;
         endcase
     end
     
     //data trunction
+    data_t temp;
     always_comb begin
         case(mem_op)
             MEM_B:  begin
-                case (alu_res[2:0])
-                    3'b000: mem = {{56{dmem_ift.r_reply_bits.rdata[7]}}, dmem_ift.r_reply_bits.rdata[7:0]};
-                    3'b001: mem = {{56{dmem_ift.r_reply_bits.rdata[15]}}, dmem_ift.r_reply_bits.rdata[15:8]};
-                    3'b010: mem = {{56{dmem_ift.r_reply_bits.rdata[23]}}, dmem_ift.r_reply_bits.rdata[23:16]};
-                    3'b011: mem = {{56{dmem_ift.r_reply_bits.rdata[31]}}, dmem_ift.r_reply_bits.rdata[31:24]};
-                    3'b100: mem = {{56{dmem_ift.r_reply_bits.rdata[39]}}, dmem_ift.r_reply_bits.rdata[39:32]};
-                    3'b101: mem = {{56{dmem_ift.r_reply_bits.rdata[47]}}, dmem_ift.r_reply_bits.rdata[47:40]};
-                    3'b110: mem = {{56{dmem_ift.r_reply_bits.rdata[55]}}, dmem_ift.r_reply_bits.rdata[55:48]};
-                    3'b111: mem = {{56{dmem_ift.r_reply_bits.rdata[63]}}, dmem_ift.r_reply_bits.rdata[63:56]};
-                    default: mem = 64'b0;
-                endcase
+                temp = dmem_ift.r_reply_bits.rdata >> {alu_res[2:0],3'b0};
+                mem = {{56{temp[7]}}, temp[7:0]};
             end
             MEM_UB: begin
-                case (alu_res[2:0])
-                    3'b000: mem = {{56{1'b0}}, dmem_ift.r_reply_bits.rdata[7:0]};
-                    3'b001: mem = {{56{1'b0}}, dmem_ift.r_reply_bits.rdata[15:8]};
-                    3'b010: mem = {{56{1'b0}}, dmem_ift.r_reply_bits.rdata[23:16]};
-                    3'b011: mem = {{56{1'b0}}, dmem_ift.r_reply_bits.rdata[31:24]};
-                    3'b100: mem = {{56{1'b0}}, dmem_ift.r_reply_bits.rdata[39:32]};
-                    3'b101: mem = {{56{1'b0}}, dmem_ift.r_reply_bits.rdata[47:40]};
-                    3'b110: mem = {{56{1'b0}}, dmem_ift.r_reply_bits.rdata[55:48]};
-                    3'b111: mem = {{56{1'b0}}, dmem_ift.r_reply_bits.rdata[63:56]};
-                    default: mem = 64'b0;
-                endcase
+                temp = dmem_ift.r_reply_bits.rdata >> {alu_res[2:0],3'b0};
+                mem = {{56{1'b0}}, temp[7:0]};
             end
             MEM_H:  begin
-                case (alu_res[2:1])
-                    2'b00: mem = {{48{dmem_ift.r_reply_bits.rdata[15]}}, dmem_ift.r_reply_bits.rdata[15:0]};
-                    2'b01: mem = {{48{dmem_ift.r_reply_bits.rdata[31]}}, dmem_ift.r_reply_bits.rdata[31:16]};
-                    2'b10: mem = {{48{dmem_ift.r_reply_bits.rdata[47]}}, dmem_ift.r_reply_bits.rdata[47:32]};
-                    2'b11: mem = {{48{dmem_ift.r_reply_bits.rdata[63]}}, dmem_ift.r_reply_bits.rdata[63:48]};
-                    default: mem = 64'b0;
-                endcase
+                temp = dmem_ift.r_reply_bits.rdata >> {alu_res[2:1],4'b0};
+                mem = {{48{temp[15]}}, temp[15:0]};
             end
             MEM_UH: begin
-                case (alu_res[2:1])
-                    2'b00: mem = {{48{1'b0}}, dmem_ift.r_reply_bits.rdata[15:0]};
-                    2'b01: mem = {{48{1'b0}}, dmem_ift.r_reply_bits.rdata[31:16]};
-                    2'b10: mem = {{48{1'b0}}, dmem_ift.r_reply_bits.rdata[47:32]};
-                    2'b11: mem = {{48{1'b0}}, dmem_ift.r_reply_bits.rdata[63:48]};
-                    default: mem = 64'b0;
-                endcase
+                temp = dmem_ift.r_reply_bits.rdata >> {alu_res[2:1],4'b0};
+                mem = {{48{1'b0}}, temp[15:0]};
             end
             MEM_W:  begin
-                case (alu_res[2])
-                    1'b0: mem = {{32{dmem_ift.r_reply_bits.rdata[31]}}, dmem_ift.r_reply_bits.rdata[31:0]};
-                    1'b1: mem = {{32{dmem_ift.r_reply_bits.rdata[63]}}, dmem_ift.r_reply_bits.rdata[63:32]};
-                    default: mem = 64'b0;
-                endcase
+                temp = dmem_ift.r_reply_bits.rdata >> {alu_res[2],5'b0};
+                mem = {{32{temp[31]}}, temp[31:0]};
             end
             MEM_UW: begin
                 case (alu_res[2])
@@ -215,38 +168,22 @@ module Core (
        always_comb begin
         case(mem_op)
             MEM_B: begin
-                case (alu_res[2:0])
-                    3'b000: dmem_ift.w_request_bits.wmask = 8'b00000001;
-                    3'b001: dmem_ift.w_request_bits.wmask = 8'b00000010;
-                    3'b010: dmem_ift.w_request_bits.wmask = 8'b00000100;
-                    3'b011: dmem_ift.w_request_bits.wmask = 8'b00001000;
-                    3'b100: dmem_ift.w_request_bits.wmask = 8'b00010000;
-                    3'b101: dmem_ift.w_request_bits.wmask = 8'b00100000;
-                    3'b110: dmem_ift.w_request_bits.wmask = 8'b01000000;
-                    3'b111: dmem_ift.w_request_bits.wmask = 8'b10000000;
-                    default: dmem_ift.w_request_bits.wmask = 8'b00000000;
-                endcase
+                dmem_ift.w_request_bits.wmask = {7'b0,1'b1};
+                dmem_ift.w_request_bits.wmask = dmem_ift.w_request_bits.wmask << alu_res[2:0];
             end
             MEM_H: begin
-                case (alu_res[2:1])
-                    2'b00: dmem_ift.w_request_bits.wmask = 8'b00000011;
-                    2'b01: dmem_ift.w_request_bits.wmask = 8'b00001100;
-                    2'b10: dmem_ift.w_request_bits.wmask = 8'b00110000;
-                    2'b11: dmem_ift.w_request_bits.wmask = 8'b11000000;
-                    default: dmem_ift.w_request_bits.wmask = 8'b00000000;
-                endcase
+                dmem_ift.w_request_bits.wmask = {6'b0,2'b11};
+                dmem_ift.w_request_bits.wmask = dmem_ift.w_request_bits.wmask << {alu_res[2:1], 1'b0};
             end
             MEM_W: begin
-                case (alu_res[2])
-                    1'b0: dmem_ift.w_request_bits.wmask = 8'b00001111;
-                    1'b1: dmem_ift.w_request_bits.wmask = 8'b11110000;
-                    default: dmem_ift.w_request_bits.wmask = 8'b00000000;
-                endcase
+                dmem_ift.w_request_bits.wmask = {4'b0,4'b1111};
+                dmem_ift.w_request_bits.wmask = dmem_ift.w_request_bits.wmask << {alu_res[2], 2'b0};
             end
             MEM_D: dmem_ift.w_request_bits.wmask = 8'b11111111;
             default: dmem_ift.w_request_bits.wmask = 8'b00000000;
         endcase
     end
+
     //choose type of write back data
     always_comb begin
         case(wb_sel)
